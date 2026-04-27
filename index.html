@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ADAS RTOS Simulator</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; line-height: 1.6; }
+        .controls { background: #f4f4f4; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+        canvas { background: #fff; display: block; margin-top: 20px; }
+        #statusDisplay { font-weight: bold; color: #2c3e50; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <h1>ADAS RTOS Simulation</h1>
+    
+    <div class="controls">
+        <div>
+            <label>Task_Compute Execution Time (ticks): </label>
+            <input type="number" id="computeTimeInput" value="2" min="1">
+        </div>
+        <div>
+            <label>Task_Log Execution Time (ticks): </label>
+            <input type="number" id="logTimeInput" value="8" min="1">
+        </div>
+        <br>
+        <button id="obstacleBtn" onclick="triggerObstacle()">🚨 Trigger Radar Obstacle</button>
+    </div>
+
+    <div id="statusDisplay">System Status: Waiting for radar...</div>
+    <canvas id="cpuGraph" width="800" height="200" style="border:1px solid #ccc;"></canvas>
+
+    <script src="simulator.js"></script>
+</body>
+</html>
