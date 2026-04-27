@@ -2,8 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ADAS RTOS Simulation - Case Study 5</title>
+    <title>ADAS RTOS Simulator</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -11,8 +10,8 @@
         <aside class="sidebar">
             <h2>Configuration</h2>
             <div class="control-group">
-                <label>Radar Probability (%):</label>
-                <input type="number" id="obstacleProb" value="30" min="0" max="100">
+                <label>Radar Detection Prob (%):</label>
+                <input type="number" id="obstacleProb" value="30">
             </div>
             <div class="control-group">
                 <label>Task_Compute Exec (ms):</label>
@@ -22,58 +21,61 @@
                 <label>Task_Log Exec (ms):</label>
                 <input type="number" id="logTime" value="160" step="20">
             </div>
+
+            <hr>
+            <div class="control-group checkbox-group">
+                <input type="checkbox" id="enableCase6">
+                <label for="enableCase6"><strong>Enable Case Study 6</strong><br>(Network Stack & Ethernet I/O)</label>
+            </div>
+
+            <div id="case6Controls" style="display:none; border-left: 3px solid #f1c40f; padding-left: 10px;">
+                <div class="control-group">
+                    <label>Network Task Priority:</label>
+                    <select id="netPriority">
+                        <option value="0.5">0.5 (Highest)</option>
+                        <option value="1.5" selected>1.5 (Medium)</option>
+                        <option value="3">3.0 (Lowest)</option>
+                    </select>
+                </div>
+            </div>
             
             <button class="btn-reroll" onclick="runBatchSimulation()">Re-Roll Scheduling</button>
 
             <div class="status-card">
                 <h3>QUEUE_RADAR</h3>
-                <div class="stat-row">
-                    <span>Messages:</span>
-                    <span id="qVal">0 / 10</span>
-                </div>
-                <div class="stat-row">
-                    <span>Dropped:</span>
-                    <span id="dropVal">0</span>
-                </div>
+                <div class="stat-row"><span>Messages:</span> <span id="qVal">0 / 10</span></div>
+                <div class="stat-row"><span>Dropped:</span> <span id="dropVal">0</span></div>
             </div>
 
             <div class="status-card">
                 <h3>MUTEX_BRAKE</h3>
-                <div class="stat-row">
-                    <span>State:</span>
-                    <span id="mState">Unlocked 🔓</span>
-                </div>
-                <div class="stat-row">
-                    <span>Owner:</span>
-                    <span id="mOwner">None</span>
-                </div>
-                <div class="stat-row">
-                    <span>Locks:</span>
-                    <span id="mCount">0</span>
-                </div>
+                <div class="stat-row"><span>State:</span> <span id="mState">Unlocked</span></div>
+                <div class="stat-row"><span>Owner:</span> <span id="mOwner">None</span></div>
             </div>
         </aside>
 
         <main class="content">
             <header>
-                <h1>ADAS RTOS Simulation - Case Study 5</h1>
-                <p>System Window: <strong>500ms</strong> | Step: <strong>20ms</strong></p>
+                <h1>ADAS RTOS System Visualizer</h1>
+                <p>Analyzing Task Interactions and Resource Locking (500ms Window)</p>
             </header>
 
-            <section class="visualizer-section">
-                <h3>Gantt Chart (500ms / 20ms Ticks)</h3>
-                <div class="canvas-container">
-                    <canvas id="ganttChart" width="850" height="300"></canvas>
-                </div>
+            <section class="chart-section">
+                <canvas id="ganttChart" width="900" height="380"></canvas>
             </section>
             
             <section class="log-section">
-                <h3>System Event Log</h3>
+                <h3>Event Log</h3>
                 <div id="eventLog" class="event-log-box"></div>
             </section>
         </main>
     </div>
-
     <script src="simulator.js"></script>
+    <script>
+        // Case 6 kontrollerini gizle/göster
+        document.getElementById('enableCase6').addEventListener('change', function() {
+            document.getElementById('case6Controls').style.display = this.checked ? 'block' : 'none';
+        });
+    </script>
 </body>
 </html>

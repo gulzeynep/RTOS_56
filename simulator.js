@@ -1,223 +1,181 @@
 // ============================================
-// 1. GLOBAL STATE & RTOS STRUCTURES
+// 1. GLOBAL STATE
 // ============================================
 let Queue_Radar = [];
-const QUEUE_MAX_SIZE = 10;
+const QUEUE_MAX = 10;
 let droppedMessages = 0;
 let systemHistory = [];
 let currentTime = 0;
 
-let Mutex_Brake = {
-    isLocked: false,
-    owner: null,
-    waitingQueue: [],
-    lockCount: 0
-};
+let Mutex_Brake = { isLocked: false, owner: null, waitingQueue: [] };
 
-let taskCompute = {
-    name: "Task_Compute",
-    priority: 1, // High Priority
-    state: "Blocked_Queue",
-    ticksRemaining: 0,
-    color: "#3498db"
-};
-
-let taskLog = {
-    name: "Task_Log",
-    priority: 2, // Low Priority
-    state: "Ready",
-    ticksRemaining: 0,
-    color: "#2ecc71"
-};
+let taskCompute = { name: "Task_Compute", priority: 1, state: "Blocked_Queue", ticksRemaining: 0 };
+let taskNetwork = { name: "Task_Network", priority: 1.5, state: "Ready", ticksRemaining: 0 };
+let taskLog = { name: "Task_Log", priority: 2, state: "Ready", ticksRemaining: 0 };
 
 // ============================================
-// 2. SCHEDULER & EXECUTION (Preemptive)
+// 2. CORE LOGIC
 // ============================================
-function scheduler() {
+function scheduler(isCase6) {
     let tasks = [taskCompute, taskLog];
-    tasks.sort((a, b) => a.priority - b.priority); // Lower number = Higher Prio
-    
-    for (let task of tasks) {
-        if (task.state === "Ready" || task.state === "Running") {
-            return task;
-        }
+    if (isCase6) {
+        taskNetwork.priority = parseFloat(document.getElementById('netPriority').value);
+        tasks.push(taskNetwork);
+    }
+    tasks.sort((a, b) => a.priority - b.priority);
+    for (let t of tasks) {
+        if (t.state === "Ready" || t.state === "Running") return t;
     }
     return null;
 }
 
 function executeTick(task) {
     if (!task) return "Idle";
-    
     task.state = "Running";
-    
-    // Initialize countdown based on user input
+
     if (task.ticksRemaining <= 0) {
-        const inputId = task.name === "Task_Compute" ? "computeTime" : "logTime";
-        const totalMs = parseInt(document.getElementById(inputId).value);
-        task.ticksRemaining = totalMs / 20;
-        
-        // Task_Compute consumes data from queue
-        if (task.name === "Task_Compute" && Queue_Radar.length > 0) {
-            Queue_Radar.shift(); 
-            logEvent("Task_Compute: Applying Brakes (Processing Queue)", "event-compute");
+        if (task.name === "Task_Compute") {
+            task.ticksRemaining = parseInt(document.getElementById('computeTime').value) / 20;
+            if (Queue_Radar.length > 0) Queue_Radar.shift();
+        } else if (task.name === "Task_Network") {
+            task.ticksRemaining = 1; // 20ms network processing
+        } else if (task.name === "Task_Log") {
+            task.ticksRemaining = parseInt(document.getElementById('logTime').value) / 20;
         }
     }
 
-    // Mutex Protection for Brake System
-    if (!Mutex_Brake.isLocked) {
-        Mutex_Brake.isLocked = true;
-        Mutex_Brake.owner = task.name;
-        Mutex_Brake.lockCount++;
-    } else if (Mutex_Brake.owner !== task.name) {
-        // Resource Conflict: Task is blocked
-        task.state = "Blocked_Mutex";
-        if (!Mutex_Brake.waitingQueue.includes(task)) {
-            Mutex_Brake.waitingQueue.push(task);
+    // Mutex Protection (Sadece Compute ve Log için)
+    if (task.name === "Task_Compute" || task.name === "Task_Log") {
+        if (!Mutex_Brake.isLocked) {
+            Mutex_Brake.isLocked = true;
+            Mutex_Brake.owner = task.name;
+        } else if (Mutex_Brake.owner !== task.name) {
+            task.state = "Blocked_Mutex";
+            if (!Mutex_Brake.waitingQueue.includes(task)) Mutex_Brake.waitingQueue.push(task);
+            return "Blocked_Mutex";
         }
-        return "Blocked_Mutex";
     }
 
     task.ticksRemaining--;
 
-    // Completion Logic
     if (task.ticksRemaining <= 0) {
-        Mutex_Brake.isLocked = false;
-        Mutex_Brake.owner = null;
+        if (Mutex_Brake.owner === task.name) {
+            Mutex_Brake.isLocked = false;
+            Mutex_Brake.owner = null;
+            if (Mutex_Brake.waitingQueue.length > 0) Mutex_Brake.waitingQueue.shift().state = "Ready";
+        }
         
-        if (task.name === "Task_Compute") {
-            task.state = (Queue_Radar.length > 0) ? "Ready" : "Blocked_Queue";
-        } else {
-            task.state = "Ready"; // Periodic task resets
-        }
-
-        if (Mutex_Brake.waitingQueue.length > 0) {
-            let next = Mutex_Brake.waitingQueue.shift();
-            next.state = "Ready";
-        }
+        if (task.name === "Task_Compute") task.state = (Queue_Radar.length > 0) ? "Ready" : "Blocked_Queue";
+        else task.state = "Ready";
     }
     return task.name;
 }
 
 // ============================================
-// 3. BATCH SIMULATION ENGINE (Re-Roll)
+// 3. SIMULATION RUNNER
 // ============================================
 function runBatchSimulation() {
-    // Reset Data
-    currentTime = 0;
-    systemHistory = [];
-    Queue_Radar = [];
-    droppedMessages = 0;
-    Mutex_Brake = { isLocked: false, owner: null, waitingQueue: [], lockCount: 0 };
-    taskCompute.state = "Blocked_Queue";
-    taskCompute.ticksRemaining = 0;
-    taskLog.state = "Ready";
-    taskLog.ticksRemaining = 0;
+    currentTime = 0; systemHistory = []; Queue_Radar = []; droppedMessages = 0;
+    Mutex_Brake = { isLocked: false, owner: null, waitingQueue: [] };
+    taskCompute.state = "Blocked_Queue"; taskCompute.ticksRemaining = 0;
+    taskLog.state = "Ready"; taskLog.ticksRemaining = 0;
     document.getElementById('eventLog').innerHTML = "";
 
+    const isCase6 = document.getElementById('enableCase6').checked;
     const prob = parseInt(document.getElementById('obstacleProb').value);
 
-    // Run 500ms Window in 20ms steps
     for (let t = 0; t <= 500; t += 20) {
         currentTime = t;
-        
-        // 1. ISR_Radar: Fires EVERY 20ms (OS Tick)
-        // But only detects an obstacle based on probability
-        let obstacleFound = Math.random() * 100 < prob;
-        if (obstacleFound) {
-            if (Queue_Radar.length < QUEUE_MAX_SIZE) {
-                Queue_Radar.push({time: t});
+        let isrTriggered = false;
+
+        // ISR_Radar firing every 20ms
+        if (Math.random() * 100 < prob) {
+            isrTriggered = true;
+            if (Queue_Radar.length < QUEUE_MAX) {
+                Queue_Radar.push("DATA");
                 if (taskCompute.state === "Blocked_Queue") taskCompute.state = "Ready";
                 logEvent("ISR: Obstacle Detected", "event-isr");
             } else {
                 droppedMessages++;
-                logEvent("ISR: Queue Full! Message Dropped", "event-warning");
             }
         }
 
-        // 2. Scheduler & Execution
-        let selected = scheduler();
+        let selected = scheduler(isCase6);
         let runningName = executeTick(selected);
 
-        systemHistory.push({
-            time: t,
-            isr: true, // Always true because OS Tick fires every 20ms
-            obstacle: obstacleFound,
-            task: runningName,
-            qSize: Queue_Radar.length,
-            mLocked: Mutex_Brake.isLocked
-        });
+        systemHistory.push({ time: t, isr: isrTriggered, task: runningName, case6: isCase6 });
     }
-
     updateUI();
     drawGanttChart();
 }
 
-function logEvent(msg, className) {
+function logEvent(msg, cls) {
     const log = document.getElementById('eventLog');
-    const div = document.createElement('div');
-    div.className = className;
-    div.textContent = `[${currentTime}ms] ${msg}`;
-    log.prepend(div);
+    const d = document.createElement('div');
+    d.className = cls; d.textContent = `[${currentTime}ms] ${msg}`;
+    log.prepend(d);
 }
 
-// ============================================
-// 4. UI & VISUALIZATION (Schedulina Style)
-// ============================================
 function updateUI() {
-    document.getElementById('qVal').textContent = `${Queue_Radar.length} / ${QUEUE_MAX_SIZE}`;
+    document.getElementById('qVal').textContent = `${Queue_Radar.length} / ${QUEUE_MAX}`;
     document.getElementById('dropVal').textContent = droppedMessages;
-    document.getElementById('mState').textContent = Mutex_Brake.isLocked ? "Locked 🔒" : "Unlocked 🔓";
+    document.getElementById('mState').textContent = Mutex_Brake.isLocked ? "Locked" : "Unlocked";
     document.getElementById('mOwner').textContent = Mutex_Brake.owner || "None";
-    document.getElementById('mCount').textContent = Mutex_Brake.lockCount;
 }
 
+// ============================================
+// 4. GRAPHICS (Idle kısımları boş bırakıldı)
+// ============================================
 function drawGanttChart() {
     const canvas = document.getElementById('ganttChart');
     const ctx = canvas.getContext('2d');
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    const margin = { top: 40, left: 150, bottom: 60, right: 40 };
+    const margin = { top: 40, left: 160, bottom: 60, right: 40 };
     const chartW = canvas.width - margin.left - margin.right;
     const tickW = chartW / 25; 
-    const rowH = 30;
+    const rowH = 28;
 
-    // Labels (Y-Axis)
+    const isCase6 = document.getElementById('enableCase6').checked;
+    const rows = ["ISR_Radar (IRQ)", "Task_Compute (H)", "Task_Log (L)"];
+    if (isCase6) rows.splice(2, 0, "Task_Network (IO)");
+    rows.push("CPU Execution");
+
     ctx.fillStyle = "#2c3e50";
-    ctx.font = "bold 12px Arial";
-    const rows = ["OS Tick (ISR)", "Task_Compute (H)", "Task_Log (L)", "CPU (Idle Check)"];
-    rows.forEach((label, i) => ctx.fillText(label, 10, margin.top + 25 + (i * 50)));
+    ctx.font = "bold 11px Arial";
+    rows.forEach((l, i) => ctx.fillText(l, 10, margin.top + 22 + (i * 60)));
 
     systemHistory.forEach((snap, i) => {
         const x = margin.left + (i * tickW);
 
-        // Row 1: OS Tick / ISR (Red for detection, Light Red for Tick)
-        ctx.fillStyle = snap.obstacle ? "#e74c3c" : "#fadbd8";
-        ctx.fillRect(x, margin.top + 5, tickW - 2, rowH);
+        // ISR Row
+        ctx.fillStyle = snap.isr ? "#e74c3c" : "#fdf2f2";
+        ctx.fillRect(x, margin.top, tickW - 2, rowH);
 
-        // Row 2: Compute Task (Blue)
-        if (snap.task === "Task_Compute") {
-            ctx.fillStyle = "#3498db";
-            ctx.fillRect(x, margin.top + 55, tickW - 2, rowH);
+        // Task Rows & CPU Timeline
+        const drawTask = (taskName, color, rowIdx) => {
+            if (snap.task === taskName) {
+                ctx.fillStyle = color;
+                ctx.fillRect(x, margin.top + (rowIdx * 60), tickW - 2, rowH);
+                ctx.fillRect(x, margin.top + (rows.length - 1) * 60, tickW - 2, rowH); // CPU Row
+            }
+        };
+
+        drawTask("Task_Compute", "#3498db", 1);
+        if (isCase6) {
+            drawTask("Task_Network", "#f1c40f", 2);
+            drawTask("Task_Log", "#2ecc71", 3);
+        } else {
+            drawTask("Task_Log", "#2ecc71", 2);
         }
 
-        // Row 3: Log Task (Green)
-        if (snap.task === "Task_Log") {
-            ctx.fillStyle = "#2ecc71";
-            ctx.fillRect(x, margin.top + 105, tickW - 2, rowH);
-        }
-
-        // Row 4: CPU Usage (Idle = Gray)
-        ctx.fillStyle = (snap.task === "Idle") ? "#d5dbdb" : 
-                        (snap.task === "Task_Compute" ? "#3498db" : "#2ecc71");
-        ctx.fillRect(x, margin.top + 155, tickW - 2, rowH);
-
-        // Time Labels
         if (snap.time % 100 === 0) {
             ctx.fillStyle = "#7f8c8d";
-            ctx.fillText(snap.time + "ms", x, canvas.height - 40);
+            ctx.fillText(snap.time + "ms", x, canvas.height - 35);
         }
     });
-
-    ctx.strokeStyle = "#2c3e50";
-    ctx.strokeRect(margin.left, margin.top, chartW, 200);
+    
+    // Frame
+    ctx.strokeStyle = "#34495e";
+    ctx.strokeRect(margin.left, margin.top - 10, chartW, rows.length * 60 - 30);
 }
