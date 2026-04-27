@@ -3,134 +3,77 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Case Study 5: ADAS RTOS Simulation</title>
+    <title>ADAS RTOS Simulation - Case Study 5</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="container">
-        <h1>🚗 ADAS RTOS Simulation - Case Study 5</h1>
-        
-        <div class="controls">
+    <div class="main-container">
+        <aside class="sidebar">
+            <h2>Configuration</h2>
             <div class="control-group">
-                <label><strong>Obstacle Detection Probability:</strong></label>
-                <input type="range" id="obstacleProb" min="0" max="100" value="30" style="width: 200px;">
-                <span id="probValue">30%</span>
+                <label>Radar Probability (%):</label>
+                <input type="number" id="obstacleProb" value="30" min="0" max="100">
             </div>
             <div class="control-group">
-                <label><strong>Task_Compute Execution Time (ms):</strong></label>
-                <input type="number" id="computeTime" value="40" min="20" max="200" step="20">
+                <label>Task_Compute Exec (ms):</label>
+                <input type="number" id="computeTime" value="40" step="20">
             </div>
             <div class="control-group">
-                <label><strong>Task_Log Execution Time (ms):</strong></label>
-                <input type="number" id="logTime" value="160" min="20" max="400" step="20">
+                <label>Task_Log Exec (ms):</label>
+                <input type="number" id="logTime" value="160" step="20">
             </div>
-            <div style="margin-top: 15px;">
-                <button id="startBtn" onclick="startSimulation()">▶️ Start Simulation</button>
-                <button id="stopBtn" onclick="stopSimulation()" disabled>⏸️ Stop</button>
-                <button onclick="resetSimulation()">🔄 Reset</button>
-            </div>
-        </div>
+            
+            <button class="btn-reroll" onclick="runBatchSimulation()">Re-Roll Scheduling</button>
 
-        <div class="status-panel">
             <div class="status-card">
-                <h3>System Time</h3>
-                <div class="value" id="timeDisplay">0 ms</div>
+                <h3>QUEUE_RADAR</h3>
+                <div class="stat-row">
+                    <span>Messages:</span>
+                    <span id="qVal">0 / 10</span>
+                </div>
+                <div class="stat-row">
+                    <span>Dropped:</span>
+                    <span id="dropVal">0</span>
+                </div>
             </div>
+
             <div class="status-card">
-                <h3>Current Running</h3>
-                <div class="value" id="taskDisplay">Idle</div>
+                <h3>MUTEX_BRAKE</h3>
+                <div class="stat-row">
+                    <span>State:</span>
+                    <span id="mState">Unlocked 🔓</span>
+                </div>
+                <div class="stat-row">
+                    <span>Owner:</span>
+                    <span id="mOwner">None</span>
+                </div>
+                <div class="stat-row">
+                    <span>Locks:</span>
+                    <span id="mCount">0</span>
+                </div>
             </div>
-            <div class="status-card">
-                <h3>Task_Compute</h3>
-                <div class="value" id="computeStateDisplay">Blocked (Queue Empty)</div>
-            </div>
-            <div class="status-card">
-                <h3>Task_Log</h3>
-                <div class="value" id="logStateDisplay">Ready</div>
-            </div>
-        </div>
+        </aside>
 
-        <!-- Queue and Mutex State Tables -->
-        <div class="state-tables">
-            <div class="state-table">
-                <h3>📬 Queue_Radar Status</h3>
-                <div class="table-content">
-                    <div class="stat-row">
-                        <span class="stat-label">Messages in Queue:</span>
-                        <span class="stat-value" id="queueCount">0</span>
-                    </div>
-                    <div class="stat-row">
-                        <span class="stat-label">Capacity:</span>
-                        <span class="stat-value">10</span>
-                    </div>
-                    <div class="stat-row">
-                        <span class="stat-label">Oldest Message:</span>
-                        <span class="stat-value" id="oldestMsg">-</span>
-                    </div>
-                    <div class="stat-row">
-                        <span class="stat-label">Dropped Messages:</span>
-                        <span class="stat-value" id="droppedCount">0</span>
-                    </div>
-                </div>
-            </div>
+        <main class="content">
+            <header>
+                <h1>ADAS RTOS Simulation - Case Study 5</h1>
+                <p>System Window: <strong>500ms</strong> | Step: <strong>20ms</strong></p>
+            </header>
 
-            <div class="state-table">
-                <h3>🔐 Mutex_Brake Status</h3>
-                <div class="table-content">
-                    <div class="stat-row">
-                        <span class="stat-label">State:</span>
-                        <span class="stat-value" id="mutexState">Unlocked</span>
-                    </div>
-                    <div class="stat-row">
-                        <span class="stat-label">Owner:</span>
-                        <span class="stat-value" id="mutexOwner">None</span>
-                    </div>
-                    <div class="stat-row">
-                        <span class="stat-label">Waiting Tasks:</span>
-                        <span class="stat-value" id="mutexWaiting">0</span>
-                    </div>
-                    <div class="stat-row">
-                        <span class="stat-label">Lock Count:</span>
-                        <span class="stat-value" id="lockCount">0</span>
-                    </div>
+            <section class="visualizer-section">
+                <h3>Gantt Chart (500ms / 20ms Ticks)</h3>
+                <div class="canvas-container">
+                    <canvas id="ganttChart" width="850" height="300"></canvas>
                 </div>
-            </div>
-        </div>
-
-        <div class="legend">
-            <h3>Legend:</h3>
-            <div class="legend-items">
-                <div class="legend-item">
-                    <div class="legend-color" style="background: #e74c3c;"></div>
-                    <span>ISR_Radar (Interrupt)</span>
-                </div>
-                <div class="legend-item">
-                    <div class="legend-color" style="background: #3498db;"></div>
-                    <span>Task_Compute (High Priority)</span>
-                </div>
-                <div class="legend-item">
-                    <div class="legend-color" style="background: #2ecc71;"></div>
-                    <span>Task_Log (Low Priority)</span>
-                </div>
-                <div class="legend-item">
-                    <div class="legend-color" style="background: #95a5a6;"></div>
-                    <span>CPU Idle</span>
-                </div>
-            </div>
-        </div>
-
-        <h3>Gantt Chart - CPU Timeline</h3>
-        <canvas id="ganttChart" width="1140" height="300"></canvas>
-
-        <h3>Event Log</h3>
-        <div class="event-log" id="eventLog"></div>
+            </section>
+            
+            <section class="log-section">
+                <h3>System Event Log</h3>
+                <div id="eventLog" class="event-log-box"></div>
+            </section>
+        </main>
     </div>
 
-    <!-- Load scripts in order -->
-    <script src="core.js"></script>
-    <script src="scheduler.js"></script>
-    <script src="visualizer.js"></script>
-    <script src="ui.js"></script>
     <script src="simulator.js"></script>
 </body>
 </html>
