@@ -1,13 +1,24 @@
 body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; margin: 0; }
 .main-container { display: flex; height: 100vh; }
-.sidebar { width: 320px; background: #ffffff; padding: 25px; border-right: 1px solid #ddd; display: flex; flex-direction: column; gap: 15px; }
+.sidebar { width: 320px; background: #ffffff; padding: 25px; border-right: 1px solid #ddd; display: flex; flex-direction: column; gap: 15px; overflow-y: auto;}
 .control-group { display: flex; flex-direction: column; gap: 5px; }
+.control-group input { padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
 .checkbox-group { flex-direction: row; align-items: center; gap: 10px; background: #fff8e1; padding: 10px; border-radius: 5px; }
-.btn-reroll { background: #3ccde7; color: #fff; border: none; padding: 12px; border-radius: 5px; font-weight: bold; cursor: pointer; }
-.status-card { background: #56aafd; color: #fff; padding: 12px; border-radius: 6px; }
-.status-card h3 { font-size: 0.7rem; margin: 0 0 8px 0; color: #bdc3c7; text-transform: uppercase; }
-.stat-row { display: flex; justify-content: space-between; font-size: 0.9rem; margin-bottom: 4px; }
+.btn-reroll { background: #3498db; color: #fff; border: none; padding: 12px; border-radius: 5px; font-weight: bold; cursor: pointer; transition: 0.2s;}
+.btn-reroll:hover { background: #2980b9; }
+.status-card { background: #34495e; color: #fff; padding: 12px; border-radius: 6px; }
+.status-card h3 { font-size: 0.75rem; margin: 0 0 8px 0; color: #bdc3c7; text-transform: uppercase; letter-spacing: 1px;}
+.stat-row { display: flex; justify-content: space-between; font-size: 0.9rem; margin-bottom: 5px; }
 .content { flex: 1; padding: 30px; overflow-y: auto; }
-.chart-section, .log-section { background: #fff; padding: 20px; border-radius: 8px; margin-top: 20px; border: 1px solid #ddd; }
-.event-log-box { height: 180px; overflow-y: auto; border: 1px solid #eee; padding: 10px; font-family: monospace; font-size: 0.8rem; }
-.event-isr { color: #e74c3c; font-weight: bold; }
+.chart-section, .log-section { background: #fff; padding: 20px; border-radius: 8px; margin-top: 20px; border: 1px solid #ddd; box-shadow: 0 2px 5px rgba(0,0,0,0.05);}
+.event-log-box { height: 220px; overflow-y: auto; border: 1px solid #ecf0f1; padding: 15px; font-family: 'Consolas', monospace; font-size: 0.85rem; background: #fafafa;}
+.log-entry { margin-bottom: 6px; padding-bottom: 6px; border-bottom: 1px solid #eee; }
+.time { color: #7f8c8d; font-weight: bold; margin-right: 8px; }
+.log-isr { color: #e74c3c; font-weight: bold; }
+.log-info { color: #2c3e50; }
+.log-switch { color: #8e44ad; }
+.log-action { color: #2980b9; }
+.log-mutex { color: #d35400; font-weight: bold;}
+.log-error { color: #c0392b; font-weight: bold;}
+.log-success { color: #27ae60; }
+.log-network { color: #f39c12; }
