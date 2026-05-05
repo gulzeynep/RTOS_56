@@ -118,10 +118,10 @@
         // 1. GLOBAL STATE
         // ============================================
         let Queue_Radar = [];
-        let Queue_Network = []; // YENI: Network I/O Kuyruğu
+        let Queue_Network = []; 
         const QUEUE_MAX = 10;
         let droppedMessages = 0;
-        let droppedNetMessages = 0; // YENI: Network drop sayacı
+        let droppedNetMessages = 0; 
         let systemHistory = [];
         let currentTime = 0;
         let previousTask = null;
@@ -129,7 +129,7 @@
         let Mutex_Brake = { isLocked: false, owner: null, waitingQueue: [] };
 
         let taskCompute = { name: "Task_Compute", priority: 1, state: "Blocked_Queue", ticksRemaining: 0 };
-        let taskNetwork = { name: "Task_Network", priority: 2, state: "Blocked_IO", ticksRemaining: 0 }; // Başlangıçta Blocked_IO
+        let taskNetwork = { name: "Task_Network", priority: 2, state: "Blocked_IO", ticksRemaining: 0 }; 
         let taskLog = { name: "Task_Log", priority: 3, state: "Ready", ticksRemaining: 0 };
 
         // ============================================
@@ -153,7 +153,6 @@
         function scheduler(isCase6) {
             let activeTasks = [taskCompute, taskLog];
             
-            // Dynamic Priorities
             taskCompute.priority = parseFloat(document.getElementById('computePriority').value);
             taskLog.priority = parseFloat(document.getElementById('logPriority').value);
 
@@ -161,7 +160,6 @@
                 taskNetwork.priority = parseFloat(document.getElementById('netPriority').value);
                 activeTasks.push(taskNetwork);
                 
-                // Simulating Background Network Message Load
                 const netLoadProb = parseInt(document.getElementById('netLoad').value);
                 if (currentTime % 40 === 0 && Math.random() * 100 < netLoadProb) {
                     if (Queue_Network.length < QUEUE_MAX) {
@@ -175,7 +173,6 @@
                 }
             }
 
-            // Sort tasks by priority (Lowest number = Highest priority)
             activeTasks.sort((a, b) => a.priority - b.priority);
             
             for (let task of activeTasks) {
@@ -189,7 +186,6 @@
         function executeTick(task, isCase6) {
             if (!task) return "Idle";
 
-            // Log context switch
             if (previousTask !== task.name && previousTask !== "Idle") {
                 logEvent(`Context Switch: CPU mapped to ${task.name} (Priority: ${task.priority})`, "switch");
             }
@@ -204,7 +200,7 @@
                         logEvent("Task_Compute consumed 1 data packet from Queue_Radar.", "action");
                     }
                 } else if (task.name === "Task_Network") {
-                    task.ticksRemaining = 2; // Fixed simulated network transmission time
+                    task.ticksRemaining = 2; 
                     if (Queue_Network.length > 0) {
                         let msgType = Queue_Network.shift();
                         logEvent(`Task_Network started packet transmission [${msgType}].`, "network");
@@ -215,7 +211,6 @@
                 }
             }
 
-            // Mutex Acquisition attempt for Compute and Log
             if (task.name === "Task_Compute" || task.name === "Task_Log") {
                 if (!Mutex_Brake.isLocked) {
                     Mutex_Brake.isLocked = true;
@@ -233,7 +228,6 @@
 
             task.ticksRemaining--;
 
-            // Task Completion
             if (task.ticksRemaining <= 0) {
                 logEvent(`${task.name} completed its execution block.`, "success");
 
@@ -249,7 +243,6 @@
                     }
                 }
 
-                // Case 6: Log taskı işini bitirdiğinde ağa paket gönderir
                 if (task.name === "Task_Log" && isCase6) {
                     if (Queue_Network.length < QUEUE_MAX) {
                         Queue_Network.push("LOG_DATA");
@@ -265,7 +258,7 @@
                 } else if (task.name === "Task_Network") {
                     task.state = (Queue_Network.length > 0) ? "Ready" : "Blocked_IO";
                 } else {
-                    task.state = "Ready"; // Task_Log is continuous in this basic sim
+                    task.state = "Ready"; 
                 }
             }
             
@@ -295,12 +288,10 @@
                 currentTime = t;
                 let isrTriggered = false;
 
-                // ISR_Radar firing
                 if (Math.random() * 100 < prob) {
                     isrTriggered = true;
                     logEvent("ISR_Radar: Hardware Interrupt Triggered!", "isr");
                     
-                    // Radara veri yazma
                     if (Queue_Radar.length < QUEUE_MAX) {
                         Queue_Radar.push("RADAR_DATA");
                         if (taskCompute.state === "Blocked_Queue") {
@@ -311,7 +302,6 @@
                         logEvent("QUEUE_RADAR OVERFLOW: ISR_Radar dropped message.", "error");
                     }
 
-                    // Case 6: ISR radarı ağ üzerinden acil uyarı gönderir
                     if (isCase6) {
                         if (Queue_Network.length < QUEUE_MAX) {
                             Queue_Network.push("ISR_ALERT");
@@ -383,10 +373,14 @@
             systemHistory.forEach((snap, i) => {
                 const x = margin.left + (i * tickW);
 
+                // ISR Drawing Logic: Thin lines. Pale pink if not triggered, Bright Red if triggered.
+                const isrWidth = tickW * 0.25; 
+                ctx.fillStyle = snap.isr ? "#ff0000" : "#ffd1d1"; // Red or Pale Pink
+                ctx.fillRect(x, margin.top, isrWidth, rowH);
+                
                 if (snap.isr) {
-                    ctx.fillStyle = "#e74c3c";
-                    ctx.fillRect(x, margin.top, tickW, rowH);
-                    ctx.strokeRect(x, margin.top, tickW, rowH);
+                    ctx.strokeStyle = "#8b0000"; // Dark red border for triggered state
+                    ctx.strokeRect(x, margin.top, isrWidth, rowH);
                 }
 
                 if (snap.task !== activeTaskObj.name || snap.task === "Idle" || snap.task === "Blocked_Mutex") {
